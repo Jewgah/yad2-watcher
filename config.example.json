@@ -19,11 +19,39 @@
     },
     {
       "topic": "Outlander essence 7pl 2017-2020",
-      "url": "https://www.yad2.co.il/vehicles/cars?manufacturer=30&model=10381&year=2017-2020&price=-1-80000&km=-1-120000&area=70,17",
+      "url": "https://www.yad2.co.il/vehicles/cars?manufacturer=30&model=10381&year=2017-2020&price=-1-80000&km=-1-120000&area=70,17&seats=7",
       "client_filters": {
-        "engine_contains": "בנזין",
-        "submodel_contains": "7 מק"
+        "engine_contains": "בנזין"
       }
+    },
+    {
+      "topic": "Verso 7pl 2013-2020",
+      "url": "https://www.yad2.co.il/vehicles/cars?manufacturer=19&model=10245&year=2013-2020&price=-1-80000&km=-1-150000&area=70,17&seats=7",
+      "client_filters": {
+        "engine_contains": "בנזין"
+      }
+    },
+    {
+      "topic": "X-Trail essence 7pl 2015-2020",
+      "url": "https://www.yad2.co.il/vehicles/cars?manufacturer=32&model=10457&year=2015-2020&price=-1-80000&km=-1-120000&seats=7&area=70,17",
+      "client_filters": {
+        "engine_contains": "בנזין"
+      }
+    },
+    {
+      "topic": "Sorento 7pl 2013-2020",
+      "url": "https://www.yad2.co.il/vehicles/cars?manufacturer=48&model=10718&year=2013-2020&price=-1-80000&km=-1-150000&seats=7&area=70,17",
+      "client_filters": {}
+    },
+    {
+      "topic": "Santa Fe 7pl 2013-2020",
+      "url": "https://www.yad2.co.il/vehicles/cars?manufacturer=21&model=10287&year=2013-2020&price=-1-80000&km=-1-150000&seats=7&area=70,17",
+      "client_filters": {}
+    },
+    {
+      "topic": "Mazda 5 2012-2020",
+      "url": "https://www.yad2.co.il/vehicles/cars?manufacturer=27&model=925&year=2012-2020&price=-1-80000&km=-1-150000&area=70,17",
+      "client_filters": {}
     },
     {
       "topic": "C4 2021-2023",

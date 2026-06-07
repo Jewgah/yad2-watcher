@@ -14,6 +14,8 @@
 - [x] Area targeting: area=70,17 (צפון השרון + נתניה) — Jordan's strict choice: Hadera, Netanya, Pardes Hana, Or Akiva; Haifa/Krayot explicitly excluded. NB: vehicles search has no city param (city=X is silently ignored), zones are the finest grain
 - [x] Outlander year floor raised to 2017 (wife prefers newer); ceilings later widened to 2020 + price to 80K — strict zones still yield 0 listings for both models (stock lives Haifa-side); watchers armed
 - [x] Notification enrichment: each listing's page fetched for real km, טסט date, gearbox, city, color, seller (agency vs private) — best-effort, falls back to basic info on captcha
+- [x] seats=7 URL param discovered & verified (echo confirms) — replaces the brittle "7 מק" submodel-text filter that missed 100% of Versos (trims like "GLI אוט׳ 1.8" omit seat count)
+- [x] Fleet widened to 7 watchers: + Verso (19/10245), X-Trail (32/10457), Sorento (48/10718), Santa Fe (21/10287), Mazda 5 (27/925) — first hits: X-Trail x4, Santa Fe x2, Sorento x1 in strict zones
 - [ ] After a week: tune filters based on hit quality (false positives / misses)
 
 ## Changelog
