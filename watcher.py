@@ -91,14 +91,23 @@ def is_captcha(html):
     return "ShieldSquare" in html[:20000] or "__NEXT_DATA__" not in html
 
 
-def parse_listings(html):
-    """Extract deduped listing dicts from __NEXT_DATA__."""
+def extract_next_data(html):
     m = re.search(
         r'<script id="__NEXT_DATA__" type="application/json">(.*?)</script>', html, re.S
     )
     if not m:
         return None
-    data = json.loads(m.group(1))
+    try:
+        return json.loads(m.group(1))
+    except json.JSONDecodeError:
+        return None
+
+
+def parse_listings(html):
+    """Extract deduped listing dicts from __NEXT_DATA__."""
+    data = extract_next_data(html)
+    if data is None:
+        return None
     queries = data.get("props", {}).get("pageProps", {}).get("dehydratedState", {}).get("queries", [])
     feed = None
     for q in queries:
@@ -134,6 +143,45 @@ def parse_listings(html):
     return listings
 
 
+def enrich_listing(l, spacing):
+    """Fetch the listing's own page to add km, test date, gearbox, city, seller.
+    Best-effort: on any failure the basic listing is returned untouched."""
+    time.sleep(random.uniform(*spacing))  # don't burst right after the search fetch
+    html = fetch_page(f"https://www.yad2.co.il/vehicles/item/{l['token']}")
+    if html is None or is_captcha(html):
+        return l
+    data = extract_next_data(html)
+    if data is None:
+        return l
+    item = None
+    try:
+        for q in data["props"]["pageProps"]["dehydratedState"]["queries"]:
+            d = q.get("state", {}).get("data")
+            if isinstance(d, dict) and "km" in d and "price" in d:
+                item = d
+                break
+    except (KeyError, TypeError):
+        return l
+    if item is None:
+        return l
+    l = dict(l)
+    if isinstance(item.get("km"), int):
+        l["km"] = item["km"]
+    test = (item.get("vehicleDates") or {}).get("testDate")
+    if isinstance(test, str) and test:
+        l["test"] = test[:10]
+    city = ((item.get("address") or {}).get("city") or {}).get("text")
+    if city:
+        l["city"] = city
+    l["gearbox"] = (item.get("gearBox") or {}).get("text")
+    l["color"] = (item.get("color") or {}).get("text")
+    agency = (item.get("customer") or {}).get("agencyName")
+    l["seller"] = f"סוכנות {agency}" if agency else (
+        "מסחרי" if item.get("adType") == "commercial" else "פרטי"
+    )
+    return l
+
+
 def passes_filters(listing, filters):
     if not filters:
         return True
@@ -147,12 +195,23 @@ def passes_filters(listing, filters):
 def format_listing(l):
     km = f"{l['km']:,} km" if isinstance(l.get("km"), int) else "km ?"
     price = f"₪{l['price']:,}" if isinstance(l.get("price"), int) else "₪?"
-    return (
-        f"{price} | {l['year']} | {l['hand']} | {km}\n"
-        f"{l['model']} — {l['submodel']}\n"
-        f"📍 {l['area']} | מנוע: {l['engine']}\n"
-        f"{l['url']}"
-    )
+    where = f"{l['city']} ({l['area']})" if l.get("city") else l["area"]
+    lines = [
+        f"{price} | {l['year']} | {l['hand']} | {km}",
+        f"{l['model']} — {l['submodel']}",
+        f"📍 {where} | מנוע: {l['engine']}",
+    ]
+    extras = " | ".join(filter(None, [l.get("gearbox"), l.get("color")]))
+    if extras:
+        lines.append(extras)
+    info = " | ".join(filter(None, [
+        f"טסט עד {l['test']}" if l.get("test") else None,
+        f"מוכר: {l['seller']}" if l.get("seller") else None,
+    ]))
+    if info:
+        lines.append(info)
+    lines.append(l["url"])
+    return "\n".join(lines)
 
 
 def send_telegram(config, text, dry_run=False):
@@ -257,10 +316,9 @@ def run(dry_run=False):
         log(f"[{topic}] {len(matching)} matching, {len(new)} new{' (first run)' if first_run else ''}")
         notified = set()
         if first_run:
-            digest = "\n\n".join(
-                format_listing(l)
-                for l in sorted(matching, key=lambda x: x.get("price") or 9e9)[:5]
-            )
+            top = sorted(matching, key=lambda x: x.get("price") or 9e9)[:5]
+            top = [enrich_listing(l, spacing) for l in top]
+            digest = "\n\n".join(format_listing(l) for l in top)
             send_telegram(
                 config,
                 f"🚗 Watcher « {topic} » démarré — {len(matching)} annonces actuelles."
@@ -271,6 +329,7 @@ def run(dry_run=False):
             notified = {l["token"] for l in new}
         else:
             for l in new:
+                l = enrich_listing(l, spacing)
                 # only mark seen if the send didn't hard-fail, so it retries next cycle
                 if send_telegram(config, f"🆕 {topic}\n\n{format_listing(l)}", dry_run):
                     notified.add(l["token"])

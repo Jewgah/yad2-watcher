@@ -3,17 +3,23 @@
     "api_token": "PASTE_BOTFATHER_TOKEN_HERE",
     "chat_id": ""
   },
-  "active_hours": [8, 22],
-  "request_spacing_seconds": [20, 40],
+  "active_hours": [
+    8,
+    22
+  ],
+  "request_spacing_seconds": [
+    20,
+    40
+  ],
   "searches": [
     {
       "topic": "Prius+ 2013-2016",
-      "url": "https://www.yad2.co.il/vehicles/cars?manufacturer=19&model=13238&year=2013-2016&price=-1-75000&km=-1-150000&topArea=25",
+      "url": "https://www.yad2.co.il/vehicles/cars?manufacturer=19&model=13238&year=2013-2016&price=-1-75000&km=-1-150000&area=70,17,5,6",
       "client_filters": {}
     },
     {
-      "topic": "Outlander essence 7pl 2015-2018",
-      "url": "https://www.yad2.co.il/vehicles/cars?manufacturer=30&model=10381&year=2015-2018&price=-1-75000&km=-1-120000&topArea=25",
+      "topic": "Outlander essence 7pl 2017-2018",
+      "url": "https://www.yad2.co.il/vehicles/cars?manufacturer=30&model=10381&year=2017-2018&price=-1-75000&km=-1-120000&area=70,17,5,6",
       "client_filters": {
         "engine_contains": "בנזין",
         "submodel_contains": "7 מק"

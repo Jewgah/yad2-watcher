@@ -11,11 +11,19 @@
 - [x] Bot created (@jordiyad2bot) + token wired + chat linked
 - [x] Notifications routed to shared group "Jordi & Lysou" (chat_id -5055696145) so both partners get listings
 - [x] launchd job loaded and first run verified LIVE (digests delivered to group 2026-06-07 15:40)
-- [ ] Jordan: replace topArea=25 URLs with ville=חדרה + rayon 30-40km URLs from browser
+- [x] Corridor targeting: area=70,17,5,6 (צפון השרון + נתניה + חיפה + הקריות) replaces whole-North topArea=25
+- [x] Outlander year floor raised to 2017-2018 (wife prefers newer)
+- [x] Notification enrichment: each listing's page fetched for real km, טסט date, gearbox, city, color, seller (agency vs private) — best-effort, falls back to basic info on captcha
 - [ ] After a week: tune filters based on hit quality (false positives / misses)
 
 ## Changelog
 
+- **2026-06-07** — Corridor + enrichment. Searches narrowed from topArea=25 (all North)
+  to area=70,17,5,6 (Hadera↔Netanya↔Haifa↔Krayot corridor; ids read back from yad2's
+  feed-literal echo). Outlander floor raised to 2017. Notifications now fetch each
+  listing's item page (noscript trick, spaced) and include km / טסט / gearbox / city /
+  color / seller — km is THE decision figure and the feed omits it. Re-seeded live:
+  enriched digests delivered to the group 15:54.
 - **2026-06-07** — Gone LIVE. Project moved Desktop→~/Projects (launchd jobs get TCC
   "Operation not permitted" on Desktop/Documents/Downloads — plist paths updated).
   Notifications switched to the shared couple group; --setup-telegram now also scans
