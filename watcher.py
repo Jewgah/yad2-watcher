@@ -238,7 +238,7 @@ def rate_listing(config, topic, l):
         f"Annonce : {json.dumps(facts, ensure_ascii=False)}\n"
         "Réponds EXACTEMENT sur deux lignes, en français :\n"
         "NOTE: <x>/10\n"
-        "RAISON: <une seule phrase concise>"
+        "RAISON: <12 mots MAXIMUM, style télégraphique, ex: 'Prix correct mais agence, km élevés pour CVT fragile'>"
     )
     env = dict(os.environ)
     env.pop("ANTHROPIC_API_KEY", None)  # force subscription auth (cf. zshrc alias)
