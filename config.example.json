@@ -13,13 +13,13 @@
   ],
   "searches": [
     {
-      "topic": "Prius+ 2013-2016",
-      "url": "https://www.yad2.co.il/vehicles/cars?manufacturer=19&model=13238&year=2013-2016&price=-1-75000&km=-1-150000&area=70,17",
+      "topic": "Prius+ 2013-2020",
+      "url": "https://www.yad2.co.il/vehicles/cars?manufacturer=19&model=13238&year=2013-2020&price=-1-80000&km=-1-150000&area=70,17",
       "client_filters": {}
     },
     {
-      "topic": "Outlander essence 7pl 2017-2018",
-      "url": "https://www.yad2.co.il/vehicles/cars?manufacturer=30&model=10381&year=2017-2018&price=-1-75000&km=-1-120000&area=70,17",
+      "topic": "Outlander essence 7pl 2017-2020",
+      "url": "https://www.yad2.co.il/vehicles/cars?manufacturer=30&model=10381&year=2017-2020&price=-1-80000&km=-1-120000&area=70,17",
       "client_filters": {
         "engine_contains": "בנזין",
         "submodel_contains": "7 מק"
