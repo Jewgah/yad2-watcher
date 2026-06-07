@@ -1,3 +1,8 @@
 data/
 config.json
 __pycache__/
+
+# Firebase deploy config (maintainer's hosting — not part of the OSS tool)
+firebase.json
+.firebaserc
+.firebase/

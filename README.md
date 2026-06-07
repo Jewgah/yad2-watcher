@@ -1,5 +1,9 @@
 # yad2-watcher
 
+[![CI](https://github.com/Jewgah/yad2-watcher/actions/workflows/ci.yml/badge.svg)](https://github.com/Jewgah/yad2-watcher/actions/workflows/ci.yml)
+
+**[Live landing page →](https://yad2-watcher.web.app)**
+
 Self-hosted watcher for [yad2.co.il](https://www.yad2.co.il). Build a search once,
 and get an **instant Telegram ping for every new listing — each scored 0–10 by an
 LLM** so you only look at the good ones. Works for **cars and rental apartments**

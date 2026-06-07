@@ -3,136 +3,250 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>yad2-watcher — AI deal alerts for yad2</title>
-<!-- LOCAL MOCKUP ONLY — not deployed. Open this file in a browser to preview. -->
+<title>yad2-watcher — AI deal alerts for yad2, self-hosted</title>
+<meta name="description" content="Build a yad2 search once and get an instant Telegram ping for every new listing, each scored 0-10 by an LLM. Open source, self-hosted, free. Cars and rental apartments out of the box.">
+<meta property="og:title" content="yad2-watcher — AI deal alerts for yad2">
+<meta property="og:description" content="Stop refreshing yad2. Let an LLM score every new listing 0-10 and ping you on Telegram only for the deals worth calling about. Open source, self-hosted, free.">
+<meta property="og:type" content="website">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
+  /* ── HakolKal design system (matches the shippost neutral theme) ── */
   :root{
-    --bg:#0e1116; --panel:#161b22; --line:#222a35; --ink:#e6edf3; --mut:#8b97a7;
-    --accent:#4ea1ff; --good:#3fb950; --star:#f1c453; --radius:14px;
+    --bg:#0f1115; --surface:#161922; --elevated:#1d212c; --border:#2a2f3a;
+    --fg:#e8eaf0; --muted:#9aa3b2; --accent:#5b8cff; --accent2:#7aa2ff;
+    --good:#3fd17a; --star:#f3c14b; --glow:rgba(91,140,255,.45);
+    --font:"Inter",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    --mono:ui-monospace,"SF Mono","Fira Code",Menlo,monospace;
+    --radius:16px;
   }
-  *{box-sizing:border-box} html{scroll-behavior:smooth}
-  body{margin:0;font:16px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
-       background:radial-gradient(1100px 600px at 70% -10%,#16243a 0%,var(--bg) 55%);color:var(--ink)}
-  .wrap{max-width:960px;margin:0 auto;padding:0 22px}
-  header{padding:26px 0;display:flex;align-items:center;justify-content:space-between}
-  .logo{font-weight:700;letter-spacing:.2px}.logo span{color:var(--accent)}
-  nav a{color:var(--mut);text-decoration:none;margin-left:18px;font-size:14px}
-  nav a:hover{color:var(--ink)}
-  .hero{padding:54px 0 30px;text-align:center}
-  .pill{display:inline-block;font-size:12.5px;color:var(--accent);border:1px solid var(--line);
-        background:#0c1520;border-radius:999px;padding:5px 12px;margin-bottom:20px}
-  h1{font-size:clamp(30px,5vw,50px);line-height:1.08;margin:.1em 0 .35em;letter-spacing:-.02em}
-  h1 em{font-style:normal;color:var(--accent)}
-  .sub{font-size:18px;color:var(--mut);max-width:640px;margin:0 auto 26px}
-  .cta{display:inline-flex;gap:10px;flex-wrap:wrap;justify-content:center}
-  .btn{appearance:none;border:0;border-radius:10px;padding:13px 20px;font-weight:600;font-size:15px;
-       cursor:pointer;text-decoration:none;display:inline-block}
-  .btn.primary{background:var(--accent);color:#04101f}
-  .btn.ghost{background:transparent;color:var(--ink);border:1px solid var(--line)}
-  .note{margin-top:14px;font-size:12.5px;color:var(--mut)}
-  .demo{margin:34px auto 0;max-width:560px;text-align:left;background:var(--panel);
-        border:1px solid var(--line);border-radius:var(--radius);overflow:hidden}
-  .demo .bar{background:#0c1015;padding:9px 14px;border-bottom:1px solid var(--line);
-             font-size:13px;color:var(--mut);display:flex;gap:8px;align-items:center}
-  .dot{width:9px;height:9px;border-radius:50%}
-  .msg{padding:16px 18px;font:14px/1.55 ui-monospace,SFMono-Regular,Menlo,monospace;white-space:pre-wrap}
-  .msg .b{color:#fff;font-weight:600}.msg a{color:var(--accent);text-decoration:none}
-  .score{color:var(--star);font-weight:600}
-  section{padding:46px 0;border-top:1px solid var(--line)}
-  h2{font-size:24px;margin:0 0 22px;letter-spacing:-.01em}
-  .grid{display:grid;gap:16px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
-  .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:20px}
-  .card h3{margin:.1em 0 .4em;font-size:16px}.card p{margin:0;color:var(--mut);font-size:14px}
-  .steps{counter-reset:s;display:grid;gap:14px}
-  .step{display:flex;gap:14px;align-items:flex-start}
-  .step::before{counter-increment:s;content:counter(s);flex:0 0 auto;width:28px;height:28px;border-radius:50%;
-       background:#0c1520;border:1px solid var(--line);color:var(--accent);font-weight:700;
-       display:grid;place-items:center;font-size:14px}
-  .step div b{display:block}.step div span{color:var(--mut);font-size:14px}
-  pre{background:#0c1015;border:1px solid var(--line);border-radius:10px;padding:14px;overflow:auto;
-      font:13px/1.5 ui-monospace,Menlo,monospace;color:#cdd9e5}
-  .disclaim{background:#1a1410;border:1px solid #3a2a18;border-radius:var(--radius);padding:16px 18px;
-            color:#e8c9a0;font-size:13.5px}
-  footer{padding:34px 0;color:var(--mut);font-size:13px;text-align:center;border-top:1px solid var(--line)}
-  .free{color:var(--good);font-weight:600}
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--font);
+       -webkit-font-smoothing:antialiased;line-height:1.6;min-height:100vh;overflow-x:hidden}
+  /* radial wash + two soft aurora blobs behind everything */
+  body::before{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;
+    background:radial-gradient(1200px 620px at 50% -12%,var(--glow),transparent 60%);opacity:.3}
+  .aurora{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden;filter:blur(70px);opacity:.4}
+  .aurora i{position:absolute;border-radius:50%;mix-blend-mode:screen}
+  .aurora i:nth-child(1){width:520px;height:520px;left:-120px;top:-80px;
+    background:radial-gradient(circle,var(--accent),transparent 65%)}
+  .aurora i:nth-child(2){width:460px;height:460px;right:-100px;top:120px;
+    background:radial-gradient(circle,#8b5cf6,transparent 65%)}
+  .aurora i:nth-child(3){width:420px;height:420px;left:30%;bottom:-160px;
+    background:radial-gradient(circle,var(--good),transparent 70%);opacity:.6}
+  .wrap{max-width:1000px;margin:0 auto;padding:0 24px;position:relative;z-index:1}
+  a{color:inherit;text-decoration:none}
+  ::selection{background:var(--accent);color:#fff}
+
+  /* header */
+  header{display:flex;align-items:center;justify-content:space-between;padding:24px 0}
+  .logo{font-weight:800;font-size:18px;letter-spacing:-.01em;display:inline-flex;align-items:center;gap:2px}
+  .logo .dot{color:var(--accent)}
+  nav{display:flex;align-items:center;gap:22px}
+  nav a{color:var(--muted);font-size:14.5px;font-weight:500;transition:color .15s}
+  nav a:hover{color:var(--fg)}
+  nav a.gh{color:var(--fg);border:1px solid var(--border);border-radius:10px;padding:7px 13px;
+    background:var(--surface);transition:border-color .15s,transform .15s}
+  nav a.gh:hover{border-color:var(--accent);transform:translateY(-1px)}
+  @media(max-width:620px){nav .hide{display:none}}
+
+  /* hero */
+  .hero{text-align:center;padding:60px 0 26px}
+  .pill{display:inline-flex;gap:8px;align-items:center;font-size:12.5px;font-weight:600;
+    color:var(--accent2);border:1px solid var(--border);background:rgba(91,140,255,.06);
+    border-radius:999px;padding:6px 14px;margin-bottom:24px}
+  .pill .free{color:var(--good)}
+  h1{font-size:clamp(34px,6vw,58px);line-height:1.05;letter-spacing:-.03em;font-weight:800;margin:.1em 0 .3em}
+  h1 .grad{background:linear-gradient(100deg,var(--accent),var(--accent2),var(--good));
+    -webkit-background-clip:text;background-clip:text;color:transparent;background-size:200% auto;
+    animation:shimmer 4s linear infinite}
+  @keyframes shimmer{to{background-position:200% center}}
+  .sub{font-size:clamp(16px,2.2vw,19px);color:var(--muted);max-width:620px;margin:0 auto 28px}
+  .cta{display:inline-flex;gap:12px;flex-wrap:wrap;justify-content:center}
+  .btn{position:relative;overflow:hidden;appearance:none;border:0;border-radius:12px;
+    padding:14px 22px;font-family:inherit;font-weight:600;font-size:15px;cursor:pointer;
+    transition:transform .15s,box-shadow .15s;display:inline-flex;align-items:center;gap:8px}
+  .btn.primary{background:linear-gradient(100deg,var(--accent),var(--accent2));color:#06101f;
+    box-shadow:0 8px 28px -10px var(--glow)}
+  .btn.primary:hover{transform:translateY(-2px);box-shadow:0 14px 36px -12px var(--glow)}
+  .btn.primary::after{content:"";position:absolute;inset:0;transform:translateX(-130%) skewX(-12deg);
+    background:linear-gradient(90deg,transparent,rgba(255,255,255,.35),transparent)}
+  .btn.primary:hover::after{animation:shine .8s ease}
+  @keyframes shine{60%,100%{transform:translateX(230%) skewX(-12deg)}}
+  .btn.ghost{background:var(--surface);color:var(--fg);border:1px solid var(--border)}
+  .btn.ghost:hover{border-color:var(--accent);transform:translateY(-2px)}
+  .note{margin-top:16px;font-size:13px;color:var(--muted)}
+
+  /* telegram demo */
+  .demo{margin:40px auto 0;max-width:560px;text-align:left;background:var(--surface);
+    border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;
+    box-shadow:0 30px 80px -40px #000}
+  .demo .bar{background:#0c0f16;padding:11px 16px;border-bottom:1px solid var(--border);
+    font-size:13px;color:var(--muted);display:flex;gap:8px;align-items:center}
+  .demo .dot{width:10px;height:10px;border-radius:50%}
+  .demo .ttl{margin-left:6px;font-weight:500;color:#c4ccda}
+  .bubble{margin:16px;background:var(--elevated);border:1px solid var(--border);
+    border-radius:14px;border-top-left-radius:4px;padding:14px 16px;
+    font:13.5px/1.55 var(--mono);white-space:pre-wrap;word-break:break-word}
+  .bubble .hd{font-weight:700;color:#fff;font-family:var(--font);font-size:14px;display:block;margin-bottom:8px}
+  .bubble a{color:var(--accent)}
+  .bubble .score{display:block;margin-top:8px;color:var(--star);font-weight:600;font-family:var(--font)}
+
+  /* sections */
+  section{padding:64px 0;border-top:1px solid var(--border)}
+  .eyebrow{font-size:13px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--accent2);margin:0 0 10px}
+  h2{font-size:clamp(24px,3.4vw,32px);line-height:1.15;letter-spacing:-.02em;font-weight:800;margin:0 0 8px}
+  .lede{color:var(--muted);max-width:620px;margin:0 0 30px;font-size:16px}
+
+  /* steps */
+  .steps{display:grid;gap:18px}
+  .step{display:flex;gap:18px;align-items:flex-start;background:var(--surface);
+    border:1px solid var(--border);border-radius:14px;padding:18px 20px;transition:border-color .15s,transform .15s}
+  .step:hover{border-color:#384258;transform:translateY(-2px)}
+  .step .n{flex:0 0 auto;width:34px;height:34px;border-radius:10px;display:grid;place-items:center;
+    font-weight:800;font-size:15px;color:#06101f;background:linear-gradient(135deg,var(--accent),var(--accent2))}
+  .step b{display:block;font-size:15.5px;margin-bottom:2px}
+  .step span{color:var(--muted);font-size:14.5px}
+  .step code{font-family:var(--mono);font-size:13px;background:#0c0f16;border:1px solid var(--border);
+    border-radius:6px;padding:1px 6px;color:#cdd9e5}
+
+  /* feature grid */
+  .grid{display:grid;gap:16px;grid-template-columns:repeat(auto-fit,minmax(240px,1fr))}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:22px;transition:border-color .15s,transform .15s}
+  .card:hover{border-color:#384258;transform:translateY(-3px)}
+  .card .ico{font-size:22px;margin-bottom:12px}
+  .card h3{margin:0 0 6px;font-size:16px;font-weight:700}
+  .card p{margin:0;color:var(--muted);font-size:14.5px}
+
+  /* install */
+  pre{background:#0b0e14;border:1px solid var(--border);border-radius:14px;padding:18px 20px;
+    overflow:auto;font:13.5px/1.7 var(--mono);color:#cdd9e5;margin:0}
+  pre .c{color:#6b7689}
+  pre .k{color:var(--accent2)}
+
+  /* legal */
+  .legal{display:flex;gap:14px;align-items:flex-start;background:rgba(243,193,75,.05);
+    border:1px solid rgba(243,193,75,.25);border-radius:14px;padding:18px 20px;color:#e7d4ad;font-size:14px}
+  .legal .ico{font-size:18px;flex:0 0 auto}
+  .legal b{color:#f3dba6}
+
+  /* footer */
+  footer{border-top:1px solid var(--border);padding:40px 0;text-align:center;color:var(--muted);font-size:13.5px}
+  footer .meta{margin-bottom:10px}
+  footer .meta span{color:#5a6675;margin:0 6px}
+  footer .craft a{color:var(--fg);font-weight:600;border-bottom:1px solid transparent;transition:color .15s,border-color .15s}
+  footer .craft a:hover{color:var(--accent);border-color:var(--accent)}
+
+  @media(prefers-reduced-motion:reduce){
+    *,*::before,*::after{animation-duration:.001ms!important;animation-iteration-count:1!important;
+      transition-duration:.001ms!important;scroll-behavior:auto!important}
+  }
 </style>
 </head>
 <body>
+<div class="aurora"><i></i><i></i><i></i></div>
 <div class="wrap">
 
   <header>
-    <div class="logo">yad2<span>·</span>watcher</div>
+    <div class="logo">yad2<span class="dot">·</span>watcher</div>
     <nav>
-      <a href="#how">How</a>
-      <a href="#features">Features</a>
-      <a href="#install">Install</a>
-      <a href="#">GitHub ↗</a>
+      <a class="hide" href="#how">How it works</a>
+      <a class="hide" href="#features">Features</a>
+      <a class="hide" href="#start">Get started</a>
+      <a class="gh" href="https://github.com/Jewgah/yad2-watcher" target="_blank" rel="noopener">GitHub ↗</a>
     </nav>
   </header>
 
   <div class="hero">
     <span class="pill">Open source · self-hosted · <span class="free">free</span></span>
-    <h1>Stop living in yad2.<br>Let <em>AI</em> find your car or apartment.</h1>
-    <p class="sub">Build a search once. Get an instant Telegram ping for every new listing —
-      each scored 0&ndash;10 by an LLM, so you only look at the deals worth calling about.</p>
+    <h1>Stop refreshing yad2.<br>Let <span class="grad">AI</span> find the deal.</h1>
+    <p class="sub">Build a search once. Get an instant Telegram ping for every new listing,
+      each scored 0&ndash;10 by an LLM, so you only look at the ones worth calling about.</p>
     <div class="cta">
-      <a href="#install" class="btn primary">Self-host it free</a>
+      <a href="#start" class="btn primary">Self-host it free</a>
       <a href="#how" class="btn ghost">See how it works</a>
     </div>
-    <div class="note">Runs on your own machine, on your own searches. No account, no fees, no data leaves your computer.</div>
+    <div class="note">Runs on your own machine, against your own searches. No account, no fees, nothing leaves your computer.</div>
 
-    <div class="demo">
-      <div class="bar"><span class="dot" style="background:#ff5f57"></span>
+    <div class="demo" role="img" aria-label="Example Telegram alert for a scored apartment listing">
+      <div class="bar">
+        <span class="dot" style="background:#ff5f57"></span>
         <span class="dot" style="background:#febc2e"></span>
-        <span class="dot" style="background:#28c840"></span>&nbsp; Telegram — Apartment hunt</div>
-      <div class="msg"><span class="b">🏠 🆕 3-4 rooms · Hadera / Netanya</span>
-
-₪4,900/חודש | 3 חד׳ | 78 מ״ר | קומה 2
+        <span class="dot" style="background:#28c840"></span>
+        <span class="ttl">Telegram · Apartment hunt</span>
+      </div>
+      <div class="bubble"><span class="hd">🏠 🆕 3-4 rooms · Hadera / Netanya</span>₪4,900/חודש | 3 חד׳ | 78 מ״ר | קומה 2
 דירה — הרצל 14, חדרה
 📍 מרכז העיר | פרטי
 🏷️ משופצת, מעלית, חניה
-<a href="#">yad2.co.il/realestate/item/…</a>
-<span class="score">⭐ 9/10 — Loyer sous le marché du quartier, rénové, particulier</span></div>
+<a href="#start">yad2.co.il/realestate/item/…</a><span class="score">⭐ 9/10 — Loyer sous le marché du quartier, rénové, particulier</span></div>
     </div>
   </div>
 
   <section id="how">
-    <h2>How it works</h2>
+    <p class="eyebrow">How it works</p>
+    <h2>Four moving parts, zero busywork.</h2>
+    <p class="lede">It behaves like one person quietly refreshing their own saved searches, then hands the judging to an LLM.</p>
     <div class="steps">
-      <div class="step"><div><b>1 · Paste a search</b><span>Filter on yad2 exactly how you like — model, price, rooms, area — and drop the URL into your config.</span></div></div>
-      <div class="step"><div><b>2 · It watches</b><span>Every 30 minutes it checks for new listings and pulls the real details (km &amp; test for cars; ₪/m², floor &amp; condition for apartments).</span></div></div>
-      <div class="step"><div><b>3 · AI triages</b><span>An LLM scores each listing 0&ndash;10 against what makes a good deal, with a one-line reason. Low scores are hidden.</span></div></div>
-      <div class="step"><div><b>4 · You get pinged</b><span>The keepers land in your Telegram — solo or a shared group — the minute they're posted. Be first to call.</span></div></div>
+      <div class="step"><div class="n">1</div><div><b>Paste a search</b><span>Filter on yad2 exactly how you like (model, price, rooms, area) and drop the URL into <code>config.json</code>.</span></div></div>
+      <div class="step"><div class="n">2</div><div><b>It watches</b><span>On a gentle interval it checks for new listings and pulls the real detail: km &amp; test for cars; ₪/m², floor &amp; condition for apartments.</span></div></div>
+      <div class="step"><div class="n">3</div><div><b>AI triages</b><span>An LLM scores each new listing 0&ndash;10 against what actually makes a good deal, with a one-line reason. Anything under your bar is hidden.</span></div></div>
+      <div class="step"><div class="n">4</div><div><b>You get pinged</b><span>The keepers land in your Telegram, solo or a shared group, minutes after they post. Be first to call.</span></div></div>
     </div>
   </section>
 
   <section id="features">
-    <h2>Why it's different from yad2's own alerts</h2>
+    <p class="eyebrow">Why it beats yad2's own alerts</p>
+    <h2>A filter that thinks, not just a firehose.</h2>
     <div class="grid">
-      <div class="card"><h3>🤖 AI deal-scoring</h3><p>Not just "new listing" — a 0&ndash;10 score and a reason, so junk and overpriced ads never waste your time.</p></div>
-      <div class="card"><h3>⚡ Real-time</h3><p>Minutes, not a batched daily email. In a fast rental market, first-to-call wins.</p></div>
-      <div class="card"><h3>🏠🚗 Multi-vertical</h3><p>Cars and rental apartments today; any yad2 category with a tiny adapter.</p></div>
-      <div class="card"><h3>👫 Share with anyone</h3><p>Point it at a Telegram group so you and your partner hunt together.</p></div>
-      <div class="card"><h3>🔒 Yours alone</h3><p>Self-hosted. Your searches, your machine, your data. No third party in the middle.</p></div>
-      <div class="card"><h3>🧩 Open source</h3><p>MIT licensed. Read it, fork it, change the scoring rubric to your taste.</p></div>
+      <div class="card"><div class="ico">🤖</div><h3>AI deal-scoring</h3><p>Not just "new listing." A 0&ndash;10 score and a reason, so junk and overpriced ads never reach you.</p></div>
+      <div class="card"><div class="ico">⚡</div><h3>Real-time</h3><p>Minutes, not a batched daily email. In a fast rental market, first-to-call wins.</p></div>
+      <div class="card"><div class="ico">🏠🚗</div><h3>Multi-vertical</h3><p>Cars and rental apartments out of the box. Any other yad2 category with a tiny adapter.</p></div>
+      <div class="card"><div class="ico">👫</div><h3>Share with anyone</h3><p>Point it at a Telegram group and hunt together with a partner or a flatmate.</p></div>
+      <div class="card"><div class="ico">🔒</div><h3>Yours alone</h3><p>Self-hosted. Your searches, your machine, your data. No third party in the middle.</p></div>
+      <div class="card"><div class="ico">🧩</div><h3>Open source</h3><p>MIT licensed. Read it, fork it, rewrite the scoring rubric to your own taste.</p></div>
     </div>
   </section>
 
-  <section id="install">
-    <h2>Install in 5 minutes</h2>
-    <pre>git clone https://github.com/&lt;you&gt;/yad2-watcher
+  <section id="start">
+    <p class="eyebrow">Get started</p>
+    <h2>Running in about five minutes.</h2>
+    <p class="lede">Python 3 standard library plus <code>curl</code>. No frameworks, no database, no cloud.</p>
+    <div class="steps">
+      <div class="step"><div class="n">1</div><div><b>Clone &amp; configure</b><span>Copy the example config and add your searches.</span>
+        <pre style="margin-top:12px"><span class="c"># clone</span>
+git clone https://github.com/Jewgah/yad2-watcher
 cd yad2-watcher
-cp config.example.json config.json   # add your Telegram bot token + searches
-python3 watcher.py --setup-telegram  # link your chat
-python3 watcher.py --now             # first run</pre>
-    <div class="disclaim">⚠️ Personal-use tool. You run it yourself, on your own connection, against your
-      own saved searches — it doesn't redistribute yad2's data. yad2's Terms of Use restrict automated
-      access; understand them before running, keep the volume gentle, and stop if asked. No warranty.</div>
+cp config.example.json config.json   <span class="c"># add your searches</span></pre></div></div>
+      <div class="step"><div class="n">2</div><div><b>Create a Telegram bot</b><span>Message <a href="https://t.me/BotFather" target="_blank" rel="noopener" style="color:var(--accent)">@BotFather</a>, run <code>/newbot</code>, paste the token into <code>config.json</code>, then link your chat:</span>
+        <pre style="margin-top:12px">python3 watcher.py <span class="k">--setup-telegram</span></pre></div></div>
+      <div class="step"><div class="n">3</div><div><b>First run</b><span>Seed your searches and confirm the alerts look right.</span>
+        <pre style="margin-top:12px">python3 watcher.py <span class="k">--now</span></pre></div></div>
+      <div class="step"><div class="n">4</div><div><b>Schedule it</b><span>Load the launchd agent on macOS (or a cron entry on Linux) and forget about it. The deals come to you.</span></div></div>
+    </div>
+    <div style="margin-top:22px;text-align:center">
+      <a href="https://github.com/Jewgah/yad2-watcher" class="btn primary" target="_blank" rel="noopener">Get it on GitHub ↗</a>
+    </div>
+  </section>
+
+  <section>
+    <p class="eyebrow">Read this first</p>
+    <h2>Use it responsibly.</h2>
+    <div class="legal">
+      <div class="ico">⚠️</div>
+      <div><b>A personal-use tool you run yourself</b>, on your own connection, against your own saved searches. It is not a hosted service and it does not redistribute yad2's data. yad2's Terms of Use restrict automated access, so understand them before you run it, keep the volume gentle (the defaults are deliberately slow), and stop if asked. No warranty: yad2 can change its markup or block the technique at any time. If you're not comfortable with that, don't run it.</div>
+    </div>
   </section>
 
   <footer>
-    yad2-watcher · MIT · not affiliated with or endorsed by yad2 ·
-    <span style="color:#5a6675">local mockup — not a live site</span>
+    <div class="meta">
+      yad2-watcher <span>·</span> MIT licensed <span>·</span> not affiliated with or endorsed by yad2
+    </div>
+    <div class="craft">crafted with <span aria-label="love">❤️</span> by
+      <a href="https://hakolkal.com" target="_blank" rel="noopener noreferrer">HakolKal</a>
+    </div>
   </footer>
 
 </div>
