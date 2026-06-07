@@ -1,9 +1,14 @@
 #!/usr/bin/env python3
 """
-yad2-watcher — polls yad2.co.il vehicle searches and notifies new listings via Telegram.
+yad2-watcher — polls yad2.co.il searches and notifies new listings via Telegram,
+each scored 0-10 by an LLM. Category-agnostic: cars, rental apartments, or any
+yad2 vertical you write an adapter for (see adapters.py).
 
 Bypasses the Radware/ShieldSquare JS challenge with the `noscript=1` cookie trick
 (yad2 serves a no-JS page whose __NEXT_DATA__ embeds the full feed JSON).
+
+Self-hosted, personal-use tool. You run it on your own connection against your own
+saved searches. Respect yad2's Terms of Use and keep the polling interval gentle.
 
 Usage:
   python3 watcher.py                  # normal run (launchd): jitter + active-hours guard
@@ -21,6 +26,8 @@ import sys
 import time
 from datetime import datetime
 
+from adapters import get_adapter
+
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 CONFIG_PATH = os.path.join(BASE_DIR, "config.json")
 DATA_DIR = os.path.join(BASE_DIR, "data")
@@ -33,8 +40,10 @@ USER_AGENT = (
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 13_1) AppleWebKit/605.1.15 "
     "(KHTML, like Gecko) Version/16.1 Safari/605.1.15"
 )
-FEED_SECTIONS = ("platinum", "boost", "solo", "commercial", "private")
 CAPTCHA_ALERT_THRESHOLD = 5
+# Feed buckets that are recommendations, not results of the user's search —
+# excluded so a sparse search doesn't notify similar-but-unfiltered listings.
+IGNORE_FEED_KEYS = {"lookalike"}
 
 
 def log(msg):
@@ -105,8 +114,13 @@ def extract_next_data(html):
         return None
 
 
-def parse_listings(html):
-    """Extract deduped listing dicts from __NEXT_DATA__."""
+def parse_listings(html, adapter):
+    """Extract deduped listing dicts from __NEXT_DATA__ via the category adapter.
+
+    yad2 feeds split listings across category-specific sections (cars: platinum /
+    boost / solo / commercial / private; rentals: private / agency / yad1 / ...).
+    Rather than hardcode names, we take every list-of-objects-with-a-token in the
+    feed dict — robust across verticals and future section renames."""
     data = extract_next_data(html)
     if data is None:
         return None
@@ -120,105 +134,51 @@ def parse_listings(html):
     if feed is None:
         return None
     listings, seen = [], set()
-    for section in FEED_SECTIONS:
-        for it in feed.get(section) or []:
+    for key, value in feed.items():
+        if key in IGNORE_FEED_KEYS or not isinstance(value, list):
+            continue
+        for it in value:
+            if not isinstance(it, dict):
+                continue
             token = it.get("token")
             if not token or token in seen:
                 continue
             seen.add(token)
-            listings.append({
-                "token": token,
-                "price": it.get("price"),
-                "year": (it.get("vehicleDates") or {}).get("yearOfProduction"),
-                "hand": (it.get("hand") or {}).get("text", "?"),
-                "km": it.get("km"),
-                "engine": (it.get("engineType") or {}).get("text", "?"),
-                "submodel": (it.get("subModel") or {}).get("text", ""),
-                "model": "{} {}".format(
-                    (it.get("manufacturer") or {}).get("text", ""),
-                    (it.get("model") or {}).get("text", ""),
-                ).strip(),
-                "area": ((it.get("address") or {}).get("area") or {}).get("text", "?"),
-                "created": it.get("createdAt", ""),
-                "url": f"https://www.yad2.co.il/vehicles/item/{token}",
-            })
+            listings.append(adapter["extract"](it))
     return listings
 
 
-def enrich_listing(l, spacing):
-    """Fetch the listing's own page to add km, test date, gearbox, city, seller.
-    Best-effort: on any failure the basic listing is returned untouched."""
+def enrich_listing(l, spacing, adapter):
+    """Fetch the listing's own page for extra detail (cars: km/test/seller).
+    Adapters whose feed is already detailed (rentals) set enrich=None and skip the
+    fetch entirely. Best-effort: on any failure the basic listing is returned."""
+    if not adapter.get("enrich"):
+        return l
     time.sleep(random.uniform(*spacing))  # don't burst right after the search fetch
-    html = fetch_page(f"https://www.yad2.co.il/vehicles/item/{l['token']}")
+    html = fetch_page(adapter["item_url"](l["token"]))
     if html is None or is_captcha(html):
         return l
     data = extract_next_data(html)
     if data is None:
         return l
-    item = None
-    try:
-        for q in data["props"]["pageProps"]["dehydratedState"]["queries"]:
-            d = q.get("state", {}).get("data")
-            if isinstance(d, dict) and "km" in d and "price" in d:
-                item = d
-                break
-    except (KeyError, TypeError):
-        return l
-    if item is None:
-        return l
-    l = dict(l)
-    if isinstance(item.get("km"), int):
-        l["km"] = item["km"]
-    test = (item.get("vehicleDates") or {}).get("testDate")
-    if isinstance(test, str) and test:
-        l["test"] = test[:10]
-    city = ((item.get("address") or {}).get("city") or {}).get("text")
-    if city:
-        l["city"] = city
-    l["gearbox"] = (item.get("gearBox") or {}).get("text")
-    l["color"] = (item.get("color") or {}).get("text")
-    agency = (item.get("customer") or {}).get("agencyName")
-    l["seller"] = f"סוכנות {agency}" if agency else (
-        "מסחרי" if item.get("adType") == "commercial" else "פרטי"
-    )
-    if item.get("abovePrice") is not None:
-        l["above_price_vs_pricelist"] = item["abovePrice"]
-    return l
+    return adapter["enrich"](data, l)
 
 
 def passes_filters(listing, filters):
+    """Generic substring gate: a `<field>_contains` filter keeps a listing only
+    when the value appears in str(listing[field]). Works for any adapter field."""
     if not filters:
         return True
-    if "engine_contains" in filters and filters["engine_contains"] not in listing["engine"]:
-        return False
-    if "submodel_contains" in filters and filters["submodel_contains"] not in listing["submodel"]:
-        return False
+    for key, needle in filters.items():
+        if not key.endswith("_contains"):
+            continue
+        field = key[: -len("_contains")]
+        if needle not in str(listing.get(field, "")):
+            return False
     return True
 
 
-def format_listing(l):
-    km = f"{l['km']:,} km" if isinstance(l.get("km"), int) else "km ?"
-    price = f"₪{l['price']:,}" if isinstance(l.get("price"), int) else "₪?"
-    where = f"{l['city']} ({l['area']})" if l.get("city") else l["area"]
-    lines = [
-        f"{price} | {l['year']} | {l['hand']} | {km}",
-        f"{l['model']} — {l['submodel']}",
-        f"📍 {where} | מנוע: {l['engine']}",
-    ]
-    extras = " | ".join(filter(None, [l.get("gearbox"), l.get("color")]))
-    if extras:
-        lines.append(extras)
-    info = " | ".join(filter(None, [
-        f"טסט עד {l['test']}" if l.get("test") else None,
-        f"מוכר: {l['seller']}" if l.get("seller") else None,
-    ]))
-    if info:
-        lines.append(info)
-    lines.append(l["url"])
-    return "\n".join(lines)
-
-
-def rate_listing(config, topic, l):
+def rate_listing(config, topic, l, adapter):
     """Score the offer 0-10 via the claude CLI (subscription). Best-effort: None on any failure."""
     cfg = config.get("rating") or {}
     if not cfg.get("enabled"):
@@ -226,19 +186,13 @@ def rate_listing(config, topic, l):
     claude_bin = cfg.get("claude_bin", "")
     if not os.path.exists(claude_bin):
         return None
-    facts = {k: v for k, v in l.items() if k != "token" and v is not None}
+    facts = {k: v for k, v in l.items() if k != "token" and v not in (None, "", [])}
     prompt = (
-        "Tu es un expert du marché auto d'occasion israélien (yad2). "
-        "Contexte acheteur : famille, ~30 000 km/an, cherche un 7 places fiable ≤ 80 000 ₪. "
-        f"Recherche active : {topic}. "
-        "Règles de notation : km + entretien + état mécanique priment sur l'année ; "
-        "vendeur particulier > agence (reprises) ; טסט long = bonus ; "
-        "compare le prix au marché israélien réel de ce modèle/année/km. "
-        "Note l'offre de 0 à 10 (10 = affaire exceptionnelle à appeler immédiatement).\n"
+        adapter["rating_intro"](topic) + "\n"
         f"Annonce : {json.dumps(facts, ensure_ascii=False)}\n"
         "Réponds EXACTEMENT sur deux lignes, en français :\n"
         "NOTE: <x>/10\n"
-        "RAISON: <12 mots MAXIMUM, style télégraphique, ex: 'Prix correct mais agence, km élevés pour CVT fragile'>"
+        "RAISON: <12 mots MAXIMUM, style télégraphique>"
     )
     env = dict(os.environ)
     env.pop("ANTHROPIC_API_KEY", None)  # force subscription auth (cf. zshrc alias)
@@ -262,10 +216,10 @@ def rate_listing(config, topic, l):
     return score, note
 
 
-def render_listing(config, topic, l):
+def render_listing(config, topic, l, adapter):
     """Returns (text, score). score is None when rating is disabled/failed."""
-    text = format_listing(l)
-    rated = rate_listing(config, topic, l)
+    text = adapter["format"](l)
+    rated = rate_listing(config, topic, l, adapter)
     if rated:
         score, note = rated
         return f"{text}\n{note}", score
@@ -380,6 +334,7 @@ def _run(config, searches, dry_run):
         if i > 0:
             time.sleep(random.uniform(*spacing))
         topic, url = search["topic"], search["url"]
+        adapter = get_adapter(search.get("category"))
         state = load_state(topic)
         html = fetch_page(url)
         if html is None or is_captcha(html):
@@ -395,7 +350,7 @@ def _run(config, searches, dry_run):
             if not dry_run:
                 save_state(topic, state)
             continue
-        listings = parse_listings(html)
+        listings = parse_listings(html, adapter)
         if listings is None:
             log(f"[{topic}] page OK but feed not found — yad2 markup may have changed")
             continue
@@ -404,14 +359,15 @@ def _run(config, searches, dry_run):
         first_run = not state.get("seeded")
         new = [l for l in matching if l["token"] not in state["tokens"]]
         log(f"[{topic}] {len(matching)} matching, {len(new)} new{' (first run)' if first_run else ''}")
+        emoji = adapter["emoji"]
         notified = set()
         if first_run:
             top = sorted(matching, key=lambda x: x.get("price") or 9e9)[:5]
-            top = [enrich_listing(l, spacing) for l in top]
-            rendered = [render_listing(config, topic, l) for l in top]
+            top = [enrich_listing(l, spacing, adapter) for l in top]
+            rendered = [render_listing(config, topic, l, adapter) for l in top]
             kept = [text for text, score in rendered if not below_threshold(config, score)]
             hidden = len(rendered) - len(kept)
-            header = f"🚗 Watcher « {topic} » démarré — {len(matching)} annonces actuelles."
+            header = f"{emoji} Watcher « {topic} » démarré — {len(matching)} annonces actuelles."
             if hidden:
                 threshold = config["rating"]["min_note_to_notify"]
                 header += f" ({hidden} notée(s) <{threshold}/10, masquée(s))"
@@ -425,14 +381,14 @@ def _run(config, searches, dry_run):
             notified = {l["token"] for l in new}
         else:
             for l in new:
-                l = enrich_listing(l, spacing)
-                text, score = render_listing(config, topic, l)
+                l = enrich_listing(l, spacing, adapter)
+                text, score = render_listing(config, topic, l, adapter)
                 if below_threshold(config, score):
                     log(f"[{topic}] {l['token']} noté {score}/10 — sous le seuil, non notifié")
                     notified.add(l["token"])  # seen: don't re-rate every cycle
                     continue
                 # only mark seen if the send didn't hard-fail, so it retries next cycle
-                if send_telegram(config, f"🆕 {topic}\n\n{text}", dry_run):
+                if send_telegram(config, f"{emoji} 🆕 {topic}\n\n{text}", dry_run):
                     notified.add(l["token"])
         state["tokens"] = sorted(set(state["tokens"]) | notified)
         if not dry_run:

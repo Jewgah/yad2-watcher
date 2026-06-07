@@ -16,10 +16,20 @@
 - [x] Notification enrichment: each listing's page fetched for real km, טסט date, gearbox, city, color, seller (agency vs private) — best-effort, falls back to basic info on captcha
 - [x] seats=7 URL param discovered & verified (echo confirms) — replaces the brittle "7 מק" submodel-text filter that missed 100% of Versos (trims like "GLI אוט׳ 1.8" omit seat count)
 - [x] Fleet widened to 7 watchers: + Verso (19/10245), X-Trail (32/10457), Sorento (48/10718), Santa Fe (21/10287), Mazda 5 (27/925) — first hits: X-Trail x4, Santa Fe x2, Sorento x1 in strict zones
+- [x] Refactored into vertical adapters (adapters.py): engine is category-agnostic; cars + rentals adapters; `category` field per search; generic `<field>_contains` filters; rentals skip per-item enrichment (feed already carries rooms/m²/floor/area) — verified offline against saved car + rental pages
+- [x] OSS-ready: English README with legal/fair-use disclaimer, MIT LICENSE, generic config.example.json, local landing-page mockup (site/index.html) — NOT published
 - [ ] After a week: tune filters based on hit quality (false positives / misses)
+- [ ] (parked) decide OSS-publish vs hosted; legal read done — hosted-scraper path rejected, client-side/OSS only
 
 ## Changelog
 
+- **2026-06-07** — Productization gate. /review-plan + a one-page Israeli legal read
+  (Computers Law 1995, unjust-enrichment "quasi-IP", X v. Bright Data, Apax owns yad2):
+  hosted-scraper SaaS rejected (concentrates ToS + bot-bypass liability on us, can't
+  scrape from datacenter IPs anyway). Chose OSS self-hosted. Refactored to vertical
+  adapters (cars + rentals) so it's a platform, not a car script; added README/LICENSE/
+  example/landing mockup. Nothing published; watcher remains STOPPED (Jordan has a car
+  in hand). Monetization model TBD (open-core / hosted easy-mode / sponsorware).
 - **2026-06-07** — Corridor + enrichment. Searches narrowed from topArea=25 (all North)
   to area=70,17,5,6 (Hadera↔Netanya↔Haifa↔Krayot corridor; ids read back from yad2's
   feed-literal echo). Outlander floor raised to 2017. Notifications now fetch each
