@@ -5,7 +5,9 @@
   },
   "rating": {
     "enabled": true,
-    "claude_bin": "/Users/jordanperez/.local/bin/claude"
+    "claude_bin": "/Users/jordanperez/.local/bin/claude",
+    "min_note_to_notify": 7,
+    "star_threshold": 8
   },
   "active_hours": [
     8,

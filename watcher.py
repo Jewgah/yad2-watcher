@@ -253,18 +253,29 @@ def rate_listing(config, topic, l):
     if not m:
         log(f"[rating] unparseable claude output: {out[:120]!r}")
         return None
+    score = float(m.group(1).replace(",", "."))
     r = re.search(r"RAISON:\s*(.+)", out)
     reason = r.group(1).strip() if r else ""
-    return f"🤖 {m.group(1)}/10 — {reason}" if reason else f"🤖 {m.group(1)}/10"
+    star = cfg.get("star_threshold")
+    emoji = "⭐" if (star is not None and score >= star) else "🤖"
+    note = f"{emoji} {m.group(1)}/10 — {reason}" if reason else f"{emoji} {m.group(1)}/10"
+    return score, note
 
 
 def render_listing(config, topic, l):
-    """format_listing + optional AI note."""
+    """Returns (text, score). score is None when rating is disabled/failed."""
     text = format_listing(l)
-    note = rate_listing(config, topic, l)
-    if note:
-        text += f"\n{note}"
-    return text
+    rated = rate_listing(config, topic, l)
+    if rated:
+        score, note = rated
+        return f"{text}\n{note}", score
+    return text, None
+
+
+def below_threshold(config, score):
+    """True when the score exists and sits under min_note_to_notify (fail-open)."""
+    threshold = (config.get("rating") or {}).get("min_note_to_notify")
+    return threshold is not None and score is not None and score < threshold
 
 
 def send_telegram(config, text, dry_run=False):
@@ -397,11 +408,17 @@ def _run(config, searches, dry_run):
         if first_run:
             top = sorted(matching, key=lambda x: x.get("price") or 9e9)[:5]
             top = [enrich_listing(l, spacing) for l in top]
-            digest = "\n\n".join(render_listing(config, topic, l) for l in top)
+            rendered = [render_listing(config, topic, l) for l in top]
+            kept = [text for text, score in rendered if not below_threshold(config, score)]
+            hidden = len(rendered) - len(kept)
+            header = f"🚗 Watcher « {topic} » démarré — {len(matching)} annonces actuelles."
+            if hidden:
+                threshold = config["rating"]["min_note_to_notify"]
+                header += f" ({hidden} notée(s) <{threshold}/10, masquée(s))"
+            digest = "\n\n".join(kept)
             send_telegram(
                 config,
-                f"🚗 Watcher « {topic} » démarré — {len(matching)} annonces actuelles."
-                + (f"\nTop 5 par prix :\n\n{digest}" if digest else ""),
+                header + (f"\nTop par prix :\n\n{digest}" if digest else ""),
                 dry_run,
             )
             state["seeded"] = True
@@ -409,8 +426,13 @@ def _run(config, searches, dry_run):
         else:
             for l in new:
                 l = enrich_listing(l, spacing)
+                text, score = render_listing(config, topic, l)
+                if below_threshold(config, score):
+                    log(f"[{topic}] {l['token']} noté {score}/10 — sous le seuil, non notifié")
+                    notified.add(l["token"])  # seen: don't re-rate every cycle
+                    continue
                 # only mark seen if the send didn't hard-fail, so it retries next cycle
-                if send_telegram(config, f"🆕 {topic}\n\n{render_listing(config, topic, l)}", dry_run):
+                if send_telegram(config, f"🆕 {topic}\n\n{text}", dry_run):
                     notified.add(l["token"])
         state["tokens"] = sorted(set(state["tokens"]) | notified)
         if not dry_run:
