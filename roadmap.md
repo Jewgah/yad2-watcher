@@ -11,7 +11,7 @@
 - [x] Bot created (@jordiyad2bot) + token wired + chat linked
 - [x] Notifications routed to shared group "Jordi & Lysou" (chat_id -5055696145) so both partners get listings
 - [x] launchd job loaded and first run verified LIVE (digests delivered to group 2026-06-07 15:40)
-- [x] Corridor targeting: area=70,17,5,6 (צפון השרון + נתניה + חיפה + הקריות) replaces whole-North topArea=25
+- [x] Area targeting: area=70,17 (צפון השרון + נתניה) — Jordan's strict choice: Hadera, Netanya, Pardes Hana, Or Akiva; Haifa/Krayot explicitly excluded. NB: vehicles search has no city param (city=X is silently ignored), zones are the finest grain
 - [x] Outlander year floor raised to 2017-2018 (wife prefers newer)
 - [x] Notification enrichment: each listing's page fetched for real km, טסט date, gearbox, city, color, seller (agency vs private) — best-effort, falls back to basic info on captcha
 - [ ] After a week: tune filters based on hit quality (false positives / misses)
