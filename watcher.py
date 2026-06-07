@@ -26,6 +26,8 @@ CONFIG_PATH = os.path.join(BASE_DIR, "config.json")
 DATA_DIR = os.path.join(BASE_DIR, "data")
 COOKIE_JAR = os.path.join(DATA_DIR, "cookies.txt")
 LOG_PATH = os.path.join(DATA_DIR, "watcher.log")
+LOCK_PATH = os.path.join(DATA_DIR, "run.lock")
+LOCK_MAX_AGE = 1500  # seconds; older locks are considered stale (crashed run)
 
 USER_AGENT = (
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 13_1) AppleWebKit/605.1.15 "
@@ -179,6 +181,8 @@ def enrich_listing(l, spacing):
     l["seller"] = f"סוכנות {agency}" if agency else (
         "מסחרי" if item.get("adType") == "commercial" else "פרטי"
     )
+    if item.get("abovePrice") is not None:
+        l["above_price_vs_pricelist"] = item["abovePrice"]
     return l
 
 
@@ -212,6 +216,55 @@ def format_listing(l):
         lines.append(info)
     lines.append(l["url"])
     return "\n".join(lines)
+
+
+def rate_listing(config, topic, l):
+    """Score the offer 0-10 via the claude CLI (subscription). Best-effort: None on any failure."""
+    cfg = config.get("rating") or {}
+    if not cfg.get("enabled"):
+        return None
+    claude_bin = cfg.get("claude_bin", "")
+    if not os.path.exists(claude_bin):
+        return None
+    facts = {k: v for k, v in l.items() if k != "token" and v is not None}
+    prompt = (
+        "Tu es un expert du marché auto d'occasion israélien (yad2). "
+        "Contexte acheteur : famille, ~30 000 km/an, cherche un 7 places fiable ≤ 80 000 ₪. "
+        f"Recherche active : {topic}. "
+        "Règles de notation : km + entretien + état mécanique priment sur l'année ; "
+        "vendeur particulier > agence (reprises) ; טסט long = bonus ; "
+        "compare le prix au marché israélien réel de ce modèle/année/km. "
+        "Note l'offre de 0 à 10 (10 = affaire exceptionnelle à appeler immédiatement).\n"
+        f"Annonce : {json.dumps(facts, ensure_ascii=False)}\n"
+        "Réponds EXACTEMENT sur deux lignes, en français :\n"
+        "NOTE: <x>/10\n"
+        "RAISON: <une seule phrase concise>"
+    )
+    env = dict(os.environ)
+    env.pop("ANTHROPIC_API_KEY", None)  # force subscription auth (cf. zshrc alias)
+    try:
+        res = subprocess.run(
+            [claude_bin, "-p", prompt], capture_output=True, timeout=180, env=env
+        )
+    except (subprocess.TimeoutExpired, OSError):
+        return None
+    out = res.stdout.decode("utf-8", errors="replace")
+    m = re.search(r"NOTE:\s*(\d+(?:[.,]\d)?)\s*/\s*10", out)
+    if not m:
+        log(f"[rating] unparseable claude output: {out[:120]!r}")
+        return None
+    r = re.search(r"RAISON:\s*(.+)", out)
+    reason = r.group(1).strip() if r else ""
+    return f"🤖 {m.group(1)}/10 — {reason}" if reason else f"🤖 {m.group(1)}/10"
+
+
+def render_listing(config, topic, l):
+    """format_listing + optional AI note."""
+    text = format_listing(l)
+    note = rate_listing(config, topic, l)
+    if note:
+        text += f"\n{note}"
+    return text
 
 
 def send_telegram(config, text, dry_run=False):
@@ -279,12 +332,38 @@ def setup_telegram():
     send_telegram(config, "✅ yad2-watcher connecté. Tu recevras les nouvelles annonces ici.")
 
 
+def acquire_lock():
+    if os.path.exists(LOCK_PATH):
+        if time.time() - os.path.getmtime(LOCK_PATH) < LOCK_MAX_AGE:
+            return False
+    with open(LOCK_PATH, "w") as f:
+        f.write(str(os.getpid()))
+    return True
+
+
+def release_lock():
+    try:
+        os.remove(LOCK_PATH)
+    except OSError:
+        pass
+
+
 def run(dry_run=False):
     config = load_config()
     searches = [s for s in config.get("searches", []) if not s.get("disabled")]
     if not searches:
         log("no enabled searches in config.json")
         return
+    if not acquire_lock():
+        log("another run is in progress (run.lock fresh) — skipping this cycle")
+        return
+    try:
+        _run(config, searches, dry_run)
+    finally:
+        release_lock()
+
+
+def _run(config, searches, dry_run):
     spacing = config.get("request_spacing_seconds", [20, 40])
     for i, search in enumerate(searches):
         if i > 0:
@@ -318,7 +397,7 @@ def run(dry_run=False):
         if first_run:
             top = sorted(matching, key=lambda x: x.get("price") or 9e9)[:5]
             top = [enrich_listing(l, spacing) for l in top]
-            digest = "\n\n".join(format_listing(l) for l in top)
+            digest = "\n\n".join(render_listing(config, topic, l) for l in top)
             send_telegram(
                 config,
                 f"🚗 Watcher « {topic} » démarré — {len(matching)} annonces actuelles."
@@ -331,7 +410,7 @@ def run(dry_run=False):
             for l in new:
                 l = enrich_listing(l, spacing)
                 # only mark seen if the send didn't hard-fail, so it retries next cycle
-                if send_telegram(config, f"🆕 {topic}\n\n{format_listing(l)}", dry_run):
+                if send_telegram(config, f"🆕 {topic}\n\n{render_listing(config, topic, l)}", dry_run):
                     notified.add(l["token"])
         state["tokens"] = sorted(set(state["tokens"]) | notified)
         if not dry_run:

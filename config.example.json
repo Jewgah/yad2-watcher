@@ -3,6 +3,10 @@
     "api_token": "PASTE_BOTFATHER_TOKEN_HERE",
     "chat_id": ""
   },
+  "rating": {
+    "enabled": true,
+    "claude_bin": "/Users/jordanperez/.local/bin/claude"
+  },
   "active_hours": [
     8,
     22
