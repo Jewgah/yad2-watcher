@@ -202,13 +202,13 @@ def setup_telegram():
     if not updates.get("ok"):
         print(f"Telegram rejected the token: {updates.get('description', 'no response')}")
         sys.exit(1)
-    chats = {
-        str(u["message"]["chat"]["id"]): u["message"]["chat"].get(
-            "first_name", u["message"]["chat"].get("title", "?")
-        )
-        for u in updates.get("result", [])
-        if "message" in u
-    }
+    chats = {}
+    for u in updates.get("result", []):
+        # groups appear via my_chat_member (bot added) as well as plain messages
+        for key in ("message", "my_chat_member"):
+            if key in u:
+                chat = u[key]["chat"]
+                chats[str(chat["id"])] = chat.get("title") or chat.get("first_name", "?")
     if not chats:
         print("No messages found. Open Telegram, send any message to your bot, then re-run.")
         sys.exit(1)

@@ -7,17 +7,17 @@
     <key>ProgramArguments</key>
     <array>
         <string>/usr/bin/python3</string>
-        <string>/Users/jordanperez/Desktop/Projects/yad2-watcher/watcher.py</string>
+        <string>/Users/jordanperez/Projects/yad2-watcher/watcher.py</string>
     </array>
     <key>WorkingDirectory</key>
-    <string>/Users/jordanperez/Desktop/Projects/yad2-watcher</string>
+    <string>/Users/jordanperez/Projects/yad2-watcher</string>
     <key>StartInterval</key>
     <integer>1800</integer>
     <key>RunAtLoad</key>
     <true/>
     <key>StandardOutPath</key>
-    <string>/Users/jordanperez/Desktop/Projects/yad2-watcher/data/launchd.log</string>
+    <string>/Users/jordanperez/Projects/yad2-watcher/data/launchd.log</string>
     <key>StandardErrorPath</key>
-    <string>/Users/jordanperez/Desktop/Projects/yad2-watcher/data/launchd.log</string>
+    <string>/Users/jordanperez/Projects/yad2-watcher/data/launchd.log</string>
 </dict>
 </plist>

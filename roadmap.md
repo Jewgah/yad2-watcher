@@ -8,13 +8,18 @@
 - [x] Client-side filters (engine, submodel/seats) for what yad2 URLs can't express
 - [x] Captcha streak detection + Telegram alert at 5 consecutive blocks
 - [x] launchd plist (30 min interval, active-hours guard + jitter in script)
-- [ ] Jordan: create BotFather bot + paste token, run `--setup-telegram`
+- [x] Bot created (@jordiyad2bot) + token wired + chat linked
+- [x] Notifications routed to shared group "Jordi & Lysou" (chat_id -5055696145) so both partners get listings
+- [x] launchd job loaded and first run verified LIVE (digests delivered to group 2026-06-07 15:40)
 - [ ] Jordan: replace topArea=25 URLs with ville=חדרה + rayon 30-40km URLs from browser
-- [ ] Load launchd job and confirm first digest arrives
 - [ ] After a week: tune filters based on hit quality (false positives / misses)
 
 ## Changelog
 
+- **2026-06-07** — Gone LIVE. Project moved Desktop→~/Projects (launchd jobs get TCC
+  "Operation not permitted" on Desktop/Documents/Downloads — plist paths updated).
+  Notifications switched to the shared couple group; --setup-telegram now also scans
+  my_chat_member updates (group joins don't arrive as "message" events).
 - **2026-06-07** — Pre-commit review fixes: seeded flag (0-listing search would re-send
   the start digest every cycle), config.json gitignored + config.example.json added
   (token would have landed in git history), km/price formatting hardened against
