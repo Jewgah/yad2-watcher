@@ -162,9 +162,11 @@ Then set `"category": "products"` on a search. No engine changes needed.
 ## Operations
 
 ```sh
-python3 watcher.py --now         # run immediately (no jitter, ignore active hours)
-python3 watcher.py --dry-run     # fetch + diff, but no Telegram and no state writes
-tail -f data/watcher.log         # what each cycle did
+python3 watcher.py --now                 # run immediately (no jitter, ignore active hours)
+python3 watcher.py --dry-run             # fetch + diff, but no Telegram and no state writes
+python3 watcher.py --install-schedule    # schedule via launchd (macOS) / print cron (Linux)
+python3 watcher.py --uninstall-schedule  # stop the schedule
+tail -f data/watcher.log                 # what each cycle did (scheduled runs also log to data/launchd.log)
 ```
 
 State lives in `data/seen_<topic>.json` (tokens already notified). Delete a file to
