@@ -12,14 +12,14 @@ out of the box, and any other yad2 vertical you write an adapter for.
 Python 3 standard library + `curl`. No frameworks, no database, no cloud.
 
 ```
-🏠 🆕 Location 3-4 pièces Hadera/Netanya
+🏠 🆕 Rental · 3-4 rooms · Hadera/Netanya
 
 ₪4,900/חודש | 3 חד׳ | 78 מ״ר | קומה 2
 דירה — הרצל 14, חדרה
 📍 מרכז העיר (אזור צפון השרון) | פרטי
 🏷️ משופצת, מעלית, חניה
 https://www.yad2.co.il/realestate/item/xxxxxxxx
-⭐ 9/10 — Loyer sous le marché du quartier, rénové, particulier
+⭐ 9/10 — Rent below the neighborhood rate, renovated, private seller
 ```
 
 ## How it works
