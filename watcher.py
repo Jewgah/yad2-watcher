@@ -395,11 +395,73 @@ def _run(config, searches, dry_run):
             save_state(topic, state)
 
 
+def install_schedule():
+    """Generate + load a launchd agent (macOS) that runs the watcher every
+    `poll_interval_minutes` from config. On other platforms, print a cron line."""
+    config = load_config()
+    minutes = int(config.get("poll_interval_minutes", 30))
+    interval = max(60, minutes * 60)
+    active = config.get("active_hours", [8, 22])
+    if sys.platform != "darwin":
+        every = minutes if 1 <= minutes < 60 else 1
+        print(f"Non-macOS — add this cron line (every {minutes} min; the active-hours "
+              f"guard {active} still applies in-script):")
+        print(f"  */{every} * * * * cd {BASE_DIR} && {sys.executable} watcher.py")
+        return
+    label = "com.yad2watcher"
+    path = os.path.expanduser(f"~/Library/LaunchAgents/{label}.plist")
+    plist = (
+        '<?xml version="1.0" encoding="UTF-8"?>\n'
+        '<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" '
+        '"http://www.apple.com/DTDs/PropertyList-1.0.dtd">\n'
+        '<plist version="1.0"><dict>\n'
+        f'  <key>Label</key><string>{label}</string>\n'
+        '  <key>ProgramArguments</key>\n'
+        f'  <array><string>{sys.executable}</string>'
+        f'<string>{os.path.join(BASE_DIR, "watcher.py")}</string></array>\n'
+        f'  <key>WorkingDirectory</key><string>{BASE_DIR}</string>\n'
+        f'  <key>StartInterval</key><integer>{interval}</integer>\n'
+        '  <key>RunAtLoad</key><true/>\n'
+        f'  <key>StandardOutPath</key><string>{os.path.join(DATA_DIR, "launchd.log")}</string>\n'
+        f'  <key>StandardErrorPath</key><string>{os.path.join(DATA_DIR, "launchd.log")}</string>\n'
+        '</dict></plist>\n'
+    )
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, "w", encoding="utf-8") as f:
+        f.write(plist)
+    subprocess.run(["launchctl", "unload", path], capture_output=True)
+    res = subprocess.run(["launchctl", "load", "-w", path], capture_output=True)
+    if res.returncode == 0:
+        print(f"✅ Scheduled: every {minutes} min, active hours {active}.")
+        print(f"   agent: {path}")
+        print("   change cadence: edit poll_interval_minutes in config.json, rerun --install-schedule")
+    else:
+        print(f"⚠️ launchctl load failed: {res.stderr.decode(errors='replace')[:200]}")
+        print(f"   plist written to {path}; load manually: launchctl load -w {path}")
+
+
+def uninstall_schedule():
+    """Stop and remove the launchd agent (macOS)."""
+    path = os.path.expanduser("~/Library/LaunchAgents/com.yad2watcher.plist")
+    subprocess.run(["launchctl", "unload", path], capture_output=True)
+    try:
+        os.remove(path)
+        print(f"Removed schedule ({path}).")
+    except OSError:
+        print("No schedule installed (nothing to remove).")
+
+
 def main():
     os.makedirs(DATA_DIR, exist_ok=True)
     args = sys.argv[1:]
     if "--setup-telegram" in args:
         setup_telegram()
+        return
+    if "--install-schedule" in args:
+        install_schedule()
+        return
+    if "--uninstall-schedule" in args:
+        uninstall_schedule()
         return
     dry_run = "--dry-run" in args
     now = "--now" in args or dry_run

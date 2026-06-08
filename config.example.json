@@ -9,6 +9,7 @@
     "min_note_to_notify": 7,
     "star_threshold": 8
   },
+  "poll_interval_minutes": 30,
   "active_hours": [
     8,
     22

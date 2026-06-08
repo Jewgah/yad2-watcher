@@ -68,6 +68,9 @@ If you're not comfortable with the above, don't run it.
 
 ## Setup
 
+> New to this? The full hand-held walkthrough (BotFather, chat_id, scheduling,
+> troubleshooting) is in **[docs/SETUP.md](docs/SETUP.md)**.
+
 1. **Telegram bot** — message [@BotFather](https://t.me/BotFather) → `/newbot` →
    copy the token into `config.json` → `telegram.api_token`.
    (Tip: create a group, add the bot, and point `chat_id` at the group to share
@@ -80,10 +83,13 @@ If you're not comfortable with the above, don't run it.
 3. **AI rating (optional but recommended)** — set `rating.claude_bin` to your
    Claude CLI path (or adapt `rate_listing` to call any LLM / the Anthropic API).
    Set `rating.enabled` to `false` to skip scoring entirely.
-4. **Schedule it** — copy `com.jordan.yad2watcher.plist` to
-   `~/Library/LaunchAgents/`, fix the paths inside, then
-   `launchctl load ~/Library/LaunchAgents/com.jordan.yad2watcher.plist`.
-   (On Linux, a cron entry calling `python3 watcher.py` works the same way.)
+4. **Schedule it** — set how often it checks in `config.json`
+   (`poll_interval_minutes`, default 30), then:
+   ```sh
+   python3 watcher.py --install-schedule
+   ```
+   On macOS this generates and loads a launchd agent for you; rerun it after changing
+   the interval, or `--uninstall-schedule` to stop. On Linux it prints the cron line.
 
 > macOS note: launchd jobs can't read `~/Desktop`, `~/Documents`, or `~/Downloads`
 > (TCC). Keep the project somewhere like `~/Projects`.
@@ -92,6 +98,10 @@ If you're not comfortable with the above, don't run it.
 
 Each entry in `config.json` → `searches` is one watcher. See
 `config.example.json`.
+
+**Don't want to hand-build the URL?** Copy `skills/yad2-search/` into `~/.claude/skills/`
+and run `/yad2-search "reliable 7-seat petrol SUV under ₪80k near Netanya, 2015+"` in
+Claude Code — it looks up the real yad2 IDs (no guessing) and writes the entry for you.
 
 ```jsonc
 {
