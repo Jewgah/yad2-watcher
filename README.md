@@ -22,6 +22,20 @@ https://www.yad2.co.il/realestate/item/xxxxxxxx
 ⭐ 9/10 — Rent below the neighborhood rate, renovated, private seller
 ```
 
+…and a car — same idea, different vertical:
+
+```
+🚗 🆕 Kia Sorento · 7-seat · 2015-2019
+
+₪54,900 | 2016 | יד ראשונה | 110,000 km
+קיה סורנטו — Urban 2.4 אוט׳ (188 כ״ס)
+📍 נתניה (אזור נתניה והסביבה) | מנוע: בנזין
+אוטומטי | אפור
+טסט עד 2027-02 | מוכר: פרטי
+https://www.yad2.co.il/vehicles/item/xxxxxxxx
+🤖 8/10 — First owner, private seller, low km for 2016, fair price
+```
+
 ## How it works
 
 yad2 fronts its pages with a Radware/ShieldSquare JS challenge. Setting the
