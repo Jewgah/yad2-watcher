@@ -230,7 +230,7 @@ cp config.example.json config.json   <span class="c"># add your searches</span><
         <pre style="margin-top:12px">python3 watcher.py <span class="k">--setup-telegram</span></pre></div></div>
       <div class="step"><div class="n">3</div><div><b>First run</b><span>Seed your searches and confirm the alerts look right.</span>
         <pre style="margin-top:12px">python3 watcher.py <span class="k">--now</span></pre></div></div>
-      <div class="step"><div class="n">4</div><div><b>Schedule it</b><span>Load the launchd agent on macOS (or a cron entry on Linux) and forget about it. The deals come to you.</span></div></div>
+      <div class="step"><div class="n">4</div><div><b>Schedule it</b><span>Set <code>poll_interval_minutes</code>, then run <code>python3 watcher.py --install-schedule</code> (launchd on macOS, cron on Linux) and forget about it. The deals come to you.</span></div></div>
     </div>
     <div style="margin-top:22px;text-align:center;display:flex;gap:12px;justify-content:center;flex-wrap:wrap">
       <a href="https://github.com/Jewgah/yad2-watcher" class="btn primary" target="_blank" rel="noopener">Get it on GitHub ↗</a>

@@ -15,6 +15,8 @@ Usage:
   python3 watcher.py --now            # run immediately, no jitter, ignore active hours
   python3 watcher.py --dry-run        # fetch + diff but don't notify / don't save state
   python3 watcher.py --setup-telegram # capture chat_id after you message the bot
+  python3 watcher.py --install-schedule   # schedule via launchd (macOS) / print cron (Linux)
+  python3 watcher.py --uninstall-schedule # remove the schedule
 """
 
 import json
@@ -25,6 +27,7 @@ import subprocess
 import sys
 import time
 from datetime import datetime
+from xml.sax.saxutils import escape
 
 from adapters import get_adapter
 
@@ -395,21 +398,45 @@ def _run(config, searches, dry_run):
             save_state(topic, state)
 
 
+def cron_schedule(minutes):
+    """Cron schedule fields for a poll every `minutes`. cron's `*/N` only spans a
+    single field (<60), so whole-hour intervals use the hour field and other >=60
+    values fall back to hourly — the finest cron can express without minute drift."""
+    minutes = max(1, int(minutes))
+    if minutes < 60:
+        return f"*/{minutes} * * * *"
+    if minutes % 60 == 0:
+        return f"0 */{minutes // 60} * * *"
+    return "0 * * * *"
+
+
 def install_schedule():
     """Generate + load a launchd agent (macOS) that runs the watcher every
     `poll_interval_minutes` from config. On other platforms, print a cron line."""
-    config = load_config()
-    minutes = int(config.get("poll_interval_minutes", 30))
+    try:
+        config = load_config()
+    except (FileNotFoundError, json.JSONDecodeError) as e:
+        print(f"config.json missing or invalid ({e}). Copy config.example.json and set it up first.")
+        return
+    try:
+        minutes = int(config.get("poll_interval_minutes", 30))
+    except (TypeError, ValueError):
+        print(f"poll_interval_minutes must be a number (got "
+              f"{config.get('poll_interval_minutes')!r}); using 30.")
+        minutes = 30
     interval = max(60, minutes * 60)
     active = config.get("active_hours", [8, 22])
     if sys.platform != "darwin":
-        every = minutes if 1 <= minutes < 60 else 1
-        print(f"Non-macOS — add this cron line (every {minutes} min; the active-hours "
+        print(f"Non-macOS — add this cron line (~every {minutes} min; the active-hours "
               f"guard {active} still applies in-script):")
-        print(f"  */{every} * * * * cd {BASE_DIR} && {sys.executable} watcher.py")
+        print(f"  {cron_schedule(minutes)} cd {BASE_DIR} && {sys.executable} watcher.py")
         return
     label = "com.yad2watcher"
     path = os.path.expanduser(f"~/Library/LaunchAgents/{label}.plist")
+    # escape paths — a repo cloned under a path containing & < > would otherwise
+    # produce malformed plist XML that launchctl rejects with a cryptic error.
+    py, script = escape(sys.executable), escape(os.path.join(BASE_DIR, "watcher.py"))
+    workdir, logpath = escape(BASE_DIR), escape(os.path.join(DATA_DIR, "launchd.log"))
     plist = (
         '<?xml version="1.0" encoding="UTF-8"?>\n'
         '<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" '
@@ -417,13 +444,12 @@ def install_schedule():
         '<plist version="1.0"><dict>\n'
         f'  <key>Label</key><string>{label}</string>\n'
         '  <key>ProgramArguments</key>\n'
-        f'  <array><string>{sys.executable}</string>'
-        f'<string>{os.path.join(BASE_DIR, "watcher.py")}</string></array>\n'
-        f'  <key>WorkingDirectory</key><string>{BASE_DIR}</string>\n'
+        f'  <array><string>{py}</string><string>{script}</string></array>\n'
+        f'  <key>WorkingDirectory</key><string>{workdir}</string>\n'
         f'  <key>StartInterval</key><integer>{interval}</integer>\n'
         '  <key>RunAtLoad</key><true/>\n'
-        f'  <key>StandardOutPath</key><string>{os.path.join(DATA_DIR, "launchd.log")}</string>\n'
-        f'  <key>StandardErrorPath</key><string>{os.path.join(DATA_DIR, "launchd.log")}</string>\n'
+        f'  <key>StandardOutPath</key><string>{logpath}</string>\n'
+        f'  <key>StandardErrorPath</key><string>{logpath}</string>\n'
         '</dict></plist>\n'
     )
     os.makedirs(os.path.dirname(path), exist_ok=True)

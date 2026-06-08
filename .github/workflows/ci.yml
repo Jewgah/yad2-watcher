@@ -17,3 +17,5 @@ jobs:
         run: python -m py_compile watcher.py adapters.py
       - name: Validate example config is valid JSON
         run: python -c "import json; json.load(open('config.example.json'))"
+      - name: Unit tests (stdlib)
+        run: python -m unittest discover -p "test_*.py" -v
