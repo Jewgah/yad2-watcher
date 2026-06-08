@@ -189,10 +189,10 @@ def rate_listing(config, topic, l, adapter):
     facts = {k: v for k, v in l.items() if k != "token" and v not in (None, "", [])}
     prompt = (
         adapter["rating_intro"](topic) + "\n"
-        f"Annonce : {json.dumps(facts, ensure_ascii=False)}\n"
-        "Réponds EXACTEMENT sur deux lignes, en français :\n"
-        "NOTE: <x>/10\n"
-        "RAISON: <12 mots MAXIMUM, style télégraphique>"
+        f"Listing: {json.dumps(facts, ensure_ascii=False)}\n"
+        "Reply EXACTLY on two lines, in English:\n"
+        "SCORE: <x>/10\n"
+        "REASON: <12 words MAX, terse>"
     )
     env = dict(os.environ)
     env.pop("ANTHROPIC_API_KEY", None)  # force subscription auth (cf. zshrc alias)
@@ -203,12 +203,12 @@ def rate_listing(config, topic, l, adapter):
     except (subprocess.TimeoutExpired, OSError):
         return None
     out = res.stdout.decode("utf-8", errors="replace")
-    m = re.search(r"NOTE:\s*(\d+(?:[.,]\d)?)\s*/\s*10", out)
+    m = re.search(r"(?:SCORE|NOTE):\s*(\d+(?:[.,]\d)?)\s*/\s*10", out)
     if not m:
         log(f"[rating] unparseable claude output: {out[:120]!r}")
         return None
     score = float(m.group(1).replace(",", "."))
-    r = re.search(r"RAISON:\s*(.+)", out)
+    r = re.search(r"(?:REASON|RAISON):\s*(.+)", out)
     reason = r.group(1).strip() if r else ""
     star = cfg.get("star_threshold")
     emoji = "⭐" if (star is not None and score >= star) else "🤖"
@@ -294,7 +294,7 @@ def setup_telegram():
     with open(CONFIG_PATH, "w", encoding="utf-8") as f:
         json.dump(config, f, ensure_ascii=False, indent=2)
     print(f"chat_id={chat_id} ({chats[chat_id]}) saved to config.json")
-    send_telegram(config, "✅ yad2-watcher connecté. Tu recevras les nouvelles annonces ici.")
+    send_telegram(config, "✅ yad2-watcher connected. You'll get new listings here.")
 
 
 def acquire_lock():
@@ -343,8 +343,8 @@ def _run(config, searches, dry_run):
             if state["captcha_streak"] == CAPTCHA_ALERT_THRESHOLD:
                 send_telegram(
                     config,
-                    f"⚠️ yad2-watcher: « {topic} » bloqué par captcha "
-                    f"{CAPTCHA_ALERT_THRESHOLD} fois de suite. À vérifier.",
+                    f"⚠️ yad2-watcher: \"{topic}\" blocked by captcha "
+                    f"{CAPTCHA_ALERT_THRESHOLD} times in a row. Worth a look.",
                     dry_run,
                 )
             if not dry_run:
@@ -367,14 +367,14 @@ def _run(config, searches, dry_run):
             rendered = [render_listing(config, topic, l, adapter) for l in top]
             kept = [text for text, score in rendered if not below_threshold(config, score)]
             hidden = len(rendered) - len(kept)
-            header = f"{emoji} Watcher « {topic} » démarré — {len(matching)} annonces actuelles."
+            header = f"{emoji} Watcher \"{topic}\" started — {len(matching)} current listings."
             if hidden:
                 threshold = config["rating"]["min_note_to_notify"]
-                header += f" ({hidden} notée(s) <{threshold}/10, masquée(s))"
+                header += f" ({hidden} scored <{threshold}/10, hidden)"
             digest = "\n\n".join(kept)
             send_telegram(
                 config,
-                header + (f"\nTop par prix :\n\n{digest}" if digest else ""),
+                header + (f"\nTop by price:\n\n{digest}" if digest else ""),
                 dry_run,
             )
             state["seeded"] = True
@@ -384,7 +384,7 @@ def _run(config, searches, dry_run):
                 l = enrich_listing(l, spacing, adapter)
                 text, score = render_listing(config, topic, l, adapter)
                 if below_threshold(config, score):
-                    log(f"[{topic}] {l['token']} noté {score}/10 — sous le seuil, non notifié")
+                    log(f"[{topic}] {l['token']} scored {score}/10 — below threshold, not sent")
                     notified.add(l["token"])  # seen: don't re-rate every cycle
                     continue
                 # only mark seen if the send didn't hard-fail, so it retries next cycle

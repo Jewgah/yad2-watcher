@@ -102,12 +102,12 @@ def _cars_format(l):
 
 def _cars_rating_intro(topic):
     return (
-        "Tu es un expert du marché auto d'occasion israélien (yad2). "
-        "Contexte acheteur : famille, ~30 000 km/an, cherche un 7 places fiable ≤ 80 000 ₪. "
-        f"Recherche active : {topic}. "
-        "Règles de notation : km + entretien + état mécanique priment sur l'année ; "
-        "vendeur particulier > agence (reprises) ; טסט long = bonus ; "
-        "compare le prix au marché israélien réel de ce modèle/année/km."
+        "You are an expert on the Israeli used-car market (yad2). "
+        "Buyer context: a family, ~30,000 km/year, after a reliable 7-seater for ≤ 80,000 ₪. "
+        f"Active search: {topic}. "
+        "Scoring rules: km + maintenance + mechanical condition outweigh the model year; "
+        "private seller > dealership (trade-ins); a long test (טסט) = bonus; "
+        "compare the price to the real Israeli market for this model/year/km."
     )
 
 
@@ -167,12 +167,12 @@ def _rentals_format(l):
 
 def _rentals_rating_intro(topic):
     return (
-        "Tu es un expert du marché locatif israélien (yad2 immobilier). "
-        f"Recherche active : {topic}. "
-        "Évalue si le loyer est juste : compare le ₪/m² au marché réel de CE quartier et de cette taille, "
-        "tiens compte de l'étage, de l'état (tags comme 'בניין משופץ' = rénové, 'בהזדמנות' = opportunité), "
-        "et des atouts. Particulier > agence (pas de commission). "
-        "Note 0-10 (10 = loyer nettement sous le marché pour le quartier, à visiter en priorité)."
+        "You are an expert on the Israeli rental market (yad2 real estate). "
+        f"Active search: {topic}. "
+        "Judge whether the rent is fair: compare the ₪/m² to the real market for THIS neighborhood and size, "
+        "factor in the floor and condition (tags like 'בניין משופץ' = renovated, 'בהזדמנות' = a deal), "
+        "and the perks. Private landlord > agency (no commission). "
+        "Score 0-10 (10 = rent clearly below the neighborhood market, visit first)."
     )
 
 
