@@ -29,7 +29,7 @@
   scrape from datacenter IPs anyway). Chose OSS self-hosted. Refactored to vertical
   adapters (cars + rentals) so it's a platform, not a car script; added README/LICENSE/
   example/landing mockup. Nothing published; watcher remains STOPPED (Jordan has a car
-  in hand). Monetization model TBD (open-core / hosted easy-mode / sponsorware).
+  in hand).
 - **2026-06-07** — Corridor + enrichment. Searches narrowed from topArea=25 (all North)
   to area=70,17,5,6 (Hadera↔Netanya↔Haifa↔Krayot corridor; ids read back from yad2's
   feed-literal echo). Outlander floor raised to 2017. Notifications now fetch each
